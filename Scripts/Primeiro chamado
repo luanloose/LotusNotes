@@ -1,0 +1,10 @@
+Ca serviço e ca produto marcar com 1
+
+um agente em formula
+
+FIELD CA_Servicos := "1";
+FIELD CA_Catalogo := "1"
+
+
+desenv/Cushman
+10.1.1.152

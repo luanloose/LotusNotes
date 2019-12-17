@@ -1,0 +1,174 @@
+Option Public
+Use "FRAMEWORK PADRAO"
+Option Declare
+
+	Dim ses 			As NotesSession
+	Dim db				As NotesDatabase
+	Dim docCaminhos 	As NotesDocument
+	Dim docAtual 		As NotesDocument
+	Dim doc 			As NotesDocument
+	Dim queryString, strId As String
+	Dim arDocs 			As Variant
+	Dim viCatalogo 		As NotesView
+	Dim lang			As String
+	Dim mensagem		As String
+Sub Initialize
+	' **********************************************************
+	' Criado em:		22/10/2019
+	' Objetivo:			Agente para ANEXAR PROPOSTA
+	' **********************************************************
+
+	Dim dbFornec 		As NotesDatabase
+	Dim dbParam 		As NotesDatabase
+
+	Dim viCaminhos 		As NotesView
+	Dim view 	   		As NotesView
+	Dim viGerFornec 	As NotesView
+	Dim viParam 		As NotesView
+		
+	Dim docGerFornec 	As NotesDocument
+	Dim docParam 		As NotesDocument
+
+	Dim embBoleto 		As NotesEmbeddedObject
+	Dim embDocumento 	As NotesEmbeddedObject
+
+	Dim caminho 		As String
+	Dim ext 			As String
+	Dim strNomeArquivo 	As String
+	Dim caminho1 		As String
+	Dim destinatario 	As String
+	Dim msgemail 		As String
+	Dim strView 		As String
+	Dim strCampo 		As String
+	Dim attachmentNames As Variant
+	Dim anexo 			As Variant
+	Dim cont 			As Integer
+	Dim strRole 		As Variant
+	
+	Dim viNeg As NotesView
+	Dim docNeg As NotesDocument
+
+	On Error GoTo trataerro
+	
+	' ********************************************
+	Set ses 				= New NotesSession
+	Set db 		 			= ses.Currentdatabase
+	Set docAtual 			= ses.Documentcontext
+	' *********** Caminhos ***********************
+	Set viCaminhos 			= db.Getview("vi_Caminhos")
+	Set docCaminhos 		= viCaminhos.Getfirstdocument()
+	'************ Fornecedores ********************
+	Set dbFornec 			= ses.Getdatabase(db.Server, docCaminhos.GE_BaseFornecedor(0), False)
+	Set viGerFornec 		= dbFornec.Getview("vi_Caminhos")
+	Set docGerFornec 		= viGerFornec.Getfirstdocument()
+	' *********************************************
+	Set dbParam 			= ses.Getdatabase(db.Server, docCaminhos.GE_BaseParametros(0), False)
+	Set viParam 			= dbParam.Getview("vi_Ger")
+	Set docParam 			= viParam.Getfirstdocument()
+
+	caminho1 =  docCaminhos.GE_Servidor(0)+ "/" + docCaminhos.GE_BaseAtual(0) + "/vi_Todos/" + docAtual.CA_ID(0)+"?editDocument"
+	
+	caminho 			= ses.Getenvironmentstring("Directory", True) & "\domino\html\" & docCaminhos.GE_CaminhoAnexos(0)
+	strRole 			= ""
+	lang 	= UCase(Left(docAtual.HTTP_Accept_language(0),2))
+	
+	
+	Set viNeg  = db.GetView("vi_NegociacaoPorIdDoc")
+	Set docNeg = viNeg.Getdocumentbykey(docAtual.CA_ID(0))
+
+	'Cria a pasta de anexos caso nao exista
+	If Dir$(caminho, 16) = "" Then
+		MkDir(caminho)
+	End If
+	
+	' ***************************************************************************	
+	
+	If docAtual.Hasembedded Then			
+		attachmentNames = Evaluate("@AttachmentNames", docAtual)
+		ForAll attFile In attachmentNames
+			caminho = ses.Getenvironmentstring("Directory", True) & "\domino\html\" & docCaminhos.GE_CaminhoAnexos(0)		
+			ext 		= StrRightBack(attFile, ".") 'StrRight(attFile, ".")
+			
+			If (ext <> "" And (ext = "pdf" Or ext = "docx" Or ext = "doc")) Then
+				
+				'PERMITIR QUALQUER TIPO DE ARQUIVO
+				If Trim(UCase(docNeg.UsuarioAtual(0))) = Trim(UCase(docNeg.CA_nomeFornec(0))) Then
+					strNomeArquivo = "PROP" & Format(Now(),"DDMMYY-HHMMSS") & "." & ext
+				Else
+		
+					strNomeArquivo = "PROP_Revisada_" & Format(Now(),"DDMMYY-HHMMSS") & "." & ext
+					strRole = Evaluate("@IsMember('[JURIDICO]';@UserRoles)", docNeg)
+					If (strRole(0) = "1") Then
+						strNomeArquivo = "PROP_RevJuridico_" & Format(Now(),"DDMMYY-HHMMSS") & "." & ext
+					End If
+					
+				End If
+				
+				If docAtual.Form(0) = "fo_Negociacao" Then
+					If docAtual.CA_PropostaAnexo(0) = "" Then
+						
+						docNeg.CA_PropostaAnexo = docAtual.CA_PropostaAnexo(0) & ";" & strNomeArquivo
+											
+					Else
+						If lang = "EN" Then
+							mensagem = "The proposal has already been attached."
+						ElseIf lang = "ES" Then
+							mensagem = "La propuesta ya se ha adjuntado."
+						Else
+							mensagem = "A proposta já foi anexada."
+						End If
+						Call msg("alerta", mensagem, "goBack();")
+						Exit Sub
+					End If					
+					
+				End If
+				Set embDocumento = docAtual.Getattachment(attFile)
+				If Not embDocumento Is Nothing Then
+					caminho = caminho & "/" & strNomeArquivo
+					Call embDocumento.Extractfile(caminho)
+					Call embDocumento.Remove()
+				End If
+				cont = cont + 1
+			Else
+				If lang = "EN" Then
+					mensagem = "There are files that are not in PDF or DOCX, please add only these types of files!"
+				ElseIf lang = "ES" Then
+					mensagem = "¡Hay archivos que no están en PDF o DOCX, por favor añada sólo estos tipos de archivos!"
+				Else
+					mensagem = "Existem arquivos que não estão em PDF ou DOCX, por favor adicione apenas estes tipos de arquivos!"
+				End If
+				Call msg("alerta", mensagem, "goBack();")
+				Exit Sub
+			End If
+		End ForAll	
+	Else
+		If lang = "EN" Then
+			mensagem = "Please choose a proposal document to add. Preference in PDF."
+		ElseIf lang = "ES" Then
+			mensagem = "Por favor seleccione un documento de propuesta para agregar. Preferencia en PDF."
+		Else
+			mensagem = "Favor escolher um documento de proposta para adicionar. Preferência em PDF."
+		End If
+		Call msg("alerta", mensagem, "goBack();")
+		Exit Sub
+	End If
+
+	Print {
+		<script Type='text/javascript'>
+			self.location='}& caminho1 &{'
+		</script>
+	}
+
+	docNeg.Save True, False
+
+	Exit Sub
+trataerro:
+	Dim erro As String
+	erro = "Agente: Anexar Proposta / Initialize \n\n Erro " & Str(Err) & ": " & Error$ & " na linha " & Str(Erl)
+	Print {
+		<script Type='text/javascript'>
+			alert("}+erro+{");
+			goBack();
+		</script>
+	}
+End Sub

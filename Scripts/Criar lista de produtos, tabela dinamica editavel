@@ -1,0 +1,386 @@
+Use "FRAMEWORK PADRAO"
+
+Dim s						As NotesSession
+Dim db						As NotesDatabase
+Dim docNegociacao			As NotesDocument
+Dim viCatalogo				As NotesView
+Dim viGer					As NotesView
+Dim viNegociacao			As NotesView
+Dim docGer					As NotesDocument
+Dim fornecedor				As String
+Dim requisitante			As String
+Dim idrequisicao			As String
+Dim	idDocRec				As String
+Dim colNegociacao 			As NotesDocumentCollection
+Dim viRequisicao 			As NotesView
+Dim status 					As String
+Dim lang 					As String
+Dim mensagem 				As String
+Dim idDoc 					As string
+
+Dim colItensProdSelec As NotesDocumentCollection
+
+
+Sub Initialize
+	
+	Dim erro As String
+	Dim dbCompras As NotesDatabase
+	Dim viItensProdSelec As NotesView
+	Dim docAtual As NotesDocument
+	Dim msgVaz As String
+	Dim fornecedor As String	
+	
+	On Error GoTo TrataErro
+	
+	Set s = New NotesSession
+	Set db = s.Currentdatabase	
+	Set docAtual = s.documentcontext
+	Set viGer = db.getview("vi_Caminhos")
+	Set docGer = viGer.GetFirstdocument()
+
+	Set viNegociacao = db.getview("vi_NegociacaoPorIdPedido")
+
+	idrequisicao	= getQueryString(docAtual.query_string(0), "idPedido") 'numero requisição
+	fornecedor		= getQueryString(docAtual.query_string(0), "fornec")
+	idDoc 			= getQueryString(docAtual.query_string(0), "idDoc")
+	idDocRec 		= getQueryString(docAtual.query_string(0), "idDocReq") 'id do documento
+	
+	'ver quantos itens selecionados para gerar a tabela
+	Set dbCompras 				= s.Getdatabase(db.server, docGer.GE_BaseCompras(0), False) 
+	Set viItensProdSelec		= dbCompras.getview("vi_ItensSelecionados")
+	
+	Set colNegociacao = viNegociacao.getalldocumentsbykey(idrequisicao)
+	'talvez seja isso aqui abaixo
+	'colItensProdSelec = viItensProdSelec.getalldocumentsbykey(idrequisicao) 
+	
+	Set colItensProdSelec = viItensProdSelec.getalldocumentsbykey(idDocRec)
+	
+	Set docNegociacao = colNegociacao.getfirstdocument()
+	
+	lang 	= UCase(Left(docAtual.HTTP_Accept_language(0),2))
+	If lang = "EN" Then
+		msgVaz = "No item included."
+	ElseIf lang = "ES" Then
+		msgVaz = "Ningún elemento incluido."
+	Else
+		msgVaz = "Nenhum item incluído."
+	End If
+	Call geracomecojanela()
+	Call geracabecalho()
+	
+	If Not docNegociacao Is Nothing Then
+			
+		
+		'criar loop para localizar o doc do fornecedor em questao	
+		While Not docNegociacao Is Nothing
+				
+			If docNegociacao.CA_CodFornec(0) = fornecedor Then
+		
+				Call imprimeDados()
+				Set docNegociacao = nothing
+			Else
+				
+				Set docNegociacao = colNegociacao.getnextdocument(docNegociacao)
+				
+			End If
+			
+		Wend
+		
+	Else
+		Print {
+			<div class="alert alert-primary" align="center">} + msgVaz + {</div>
+		}
+	End If
+	
+	Call geraFimJanela()
+		
+	Exit Sub	
+TrataErro:
+	erro = "Ocorreu um erro no agente: CRIA LISTA DE PRODUTOS-SERVICOS AVULSOS/Initialize - " + Str(Err) + " " + Error + " na linha " +  Str(Erl) + " entre em contato com o administrador do sistema. " 
+	Print erro
+	Print "<script language='JavaScript'>"
+	Print "alert('"+ erro +"');"
+	'Print "	history.back();"
+	Print "</script>"
+End Sub
+Sub geracomecojanela
+	
+	Print "<html>"
+	
+	Print{
+		<head>
+		<meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+		</head>
+		<body>	
+}
+End Sub
+
+Sub geraFimJanela
+	
+
+	
+	Print 	{
+				
+
+				</body>
+				</html>
+
+				
+			}
+	
+	
+End Sub
+
+Sub imprimeDados()
+	
+	Dim cabcod As String
+	Dim cabNome As String
+	Dim cabQuant As String
+	Dim unidade As String
+	Dim quantidade As string
+	Dim complemento As String
+	Dim valorUnid As String
+	Dim valorTotal As String
+	Dim percetEnt1 As String
+	Dim dataEnt1 As String
+	Dim percetEnt2 As String
+	Dim dataEnt2 As String
+	
+
+	Dim contStr 					As String
+	
+	Dim codProd 					As variant
+	Dim quantProd 					As Variant
+	Dim uniProd 					As Variant
+	Dim nomeProd 					As Variant
+	Dim compleProd 					As Variant
+	Dim valorUniProd 				As Variant
+	Dim valorTotalProd 				As Variant
+	Dim entregaUmProd 				As Variant
+	Dim entregaDoisProd 			As Variant
+	Dim percentEntregaUmProd 		As Variant
+	Dim percentEntregaDoisProd 		As Variant
+	
+	If lang = "EN" Then
+		cabNome = "Name"	
+		cabcod = "Code"
+		cabQuant = "Quantity" 
+		unidade = "Uni. Medida"
+		complemento = "Complemento"
+		valorUnid = "Valor Uni"
+		valorTotal = "Valor total"
+		percetEnt1 = "%Ent 1"
+		dataEnt1 = "Data Ent 1"
+		percetEnt2 = "%Ent 2"
+		dataEnt2 = "Data Ent 2"
+		
+	ElseIf lang = "ES" Then
+		cabcod = "Código"
+		cabNome = "Nombre"
+		cabQuant = "Quant" 
+		unidade = "Uni. Medida"
+		complemento = "Complemento"
+		valorUnid = "Valor Uni"
+		valorTotal = "Valor total"
+		percetEnt1 = "%Ent 1"
+		dataEnt1 = "Data Ent 1"
+		percetEnt2 = "%Ent 2"
+		dataEnt2 = "Data Ent 2"
+	Else
+		cabcod = "Código"
+		cabNome = "Nome"
+		cabQuant = "Quant" 
+		unidade = "Uni. Medida"
+		complemento = "Complemento"
+		valorUnid = "Valor Uni"
+		valorTotal = "Valor total"
+		percetEnt1 = "%Ent 1"
+		dataEnt1 = "Data Ent 1"
+		percetEnt2 = "%Ent 2"
+		dataEnt2 = "Data Ent 2"
+	End If
+
+	On Error GoTo trataErro
+	
+	Str_Linha = Str_linha + |
+		<table Class="table table-bordered table-striped table-sm">
+		<thead>
+		<tr>
+			<th style="width:10%">| + cabcod + |</th>
+			<th >| + cabNome + |</th>
+			<th style="width:10%">| + unidade + |</th>
+			<th style="width:5%">| + cabQuant + |</th>
+			<th style="width:10%">| + complemento + |</th>
+			<th style="width:7%">| + valorUnid + | </th>
+			<th style="width:7%">| + valorTotal + | </th>
+			<th style="width:7%">| + percetEnt1 + | </th>
+			<th style="width:10%">| + dataEnt1 + | </th>
+			<th style="width:7%">| + percetEnt2 + | </th>
+			<th style="width:10%">| + dataEnt2 + | </th>
+			</tr>
+			</thead>
+			<tbody>
+		|
+	
+	
+	For i = 1 To colItensProdSelec.Count
+		
+		codProd						= docNegociacao.GetItemValue( "CA_CodProduto"+i )
+		nomeProd 					= docNegociacao.GetItemValue( "CA_NomeProduto"+i )
+		uniProd						= docNegociacao.GetItemValue( "CA_UnidadeMedida"+i )
+		quantProd					= docNegociacao.GetItemValue( "CA_Quantidade"+i )
+		compleProd					= docNegociacao.GetItemValue( "CA_Complemento"+i )
+		valorUniProd				= docNegociacao.GetItemValue( "CA_ValorUni"+i )
+		valorTotalProd				= docNegociacao.GetItemValue( "CA_ValorTotal"+i )
+		entregaUmProd				= docNegociacao.GetItemValue( "CA_EntregaUm"+i )
+		entregaDoisProd				= docNegociacao.GetItemValue( "CA_EntregaDois"+i )
+		percentEntregaUmProd		= docNegociacao.GetItemValue( "CA_PercentEntregaUm"+i )
+		percentEntregaDoisProd		= docNegociacao.GetItemValue( "CA_PercentEntregaDois"+i )
+		
+		contStr = CStr(i)
+		
+		Str_Linha			= Str_linha + |
+		<tr >
+		<td style="vertical-align:middle">| + codProd(0) + |</td>
+		<td style="vertical-align:middle">| + nomeProd(0) + |</td> 
+		<td style="vertical-align:middle">| + uniProd(0) + |</td> 
+		<td style="vertical-align:middle"><span  id="CA_Quantidade|+contStr+|">| + CStr(quantProd(0)) + |</span></td>
+		<td style="vertical-align:middle">| + compleProd(0) + |</td>
+		<td style="vertical-align:middle">| + |
+<Input class='form-control form-control-sm' id="CA_ValorUni|+contStr+|" Type='text' value="|+valorUniProd(0)+|"|+|
+			onblur="atualizaItem('CA_ValorUni|+contStr+|')" onkeyup="alteraQuant('|+contStr+|')" onkeypress="return isNumber(event)"></td>
+		<td style="vertical-align:middle">| + |
+			<Input disabled class='form-control form-control-sm total' id="CA_ValorTotal|+contStr+|" Type='text' value="|+valorTotalProd(0)+|"|+|
+				></td>
+		<td style="vertical-align:middle">| + |
+				<Input class='form-control form-control-sm' id="CA_PercentEntregaUm|+contStr+|" Type='text' value="|+percentEntregaUmProd(0)+|"|+|
+					onkeyup="alteraPercent('|+contStr+|')" onkeypress="return isNumber(event)"></td>
+		<td style="vertical-align:middle">| + |
+				<Input class='form-control form-control-sm' id="CA_EntregaUm|+contStr+|" Type='date' value="|+entregaUmProd(0)+|"|+|
+					onblur="atualizaItem('CA_EntregaUm|+contStr+|')" onkeypress="return isNumber(event)"></td>
+		<td style="vertical-align:middle">| + |
+				<Input disabled class='form-control form-control-sm' " Type='text' id="CA_PercentEntregaDois|+contStr+|" value="|+percentEntregaDoisProd(0)+|"|+|
+		onkeypress="return isNumber(event)"></td>
+		<td style="vertical-align:middle">| + |
+		<Input class='form-control form-control-sm' id="CA_EntregaDois|+contStr+|" Type='date' value="|+entregaDoisProd(0)+|"|+|
+		onblur="atualizaItem('CA_EntregaDois|+contStr+|')" onkeypress="return isNumber(event)"></td>
+
+		|
+		
+		Str_Linha			= Str_linha + |
+		</tr>
+		|
+		
+	Next
+
+	strlinha = strlinha + |
+	</tbody>
+	</table>
+
+	</div>
+	</div>
+	</div>
+	<!--/.col-->
+	</div> |
+	Print 	Str_linha
+	
+	Exit Sub	
+TrataErro:
+	erro = "Ocorreu um erro no agente: CRIA LISTA ITENS SELECIONADOS/imprimeDados - " + Str(Err) + " " + Error + " na linha " +  Str(Erl) + " entre em contato com o administrador do sistema." 
+	Print "<script language='JavaScript'>"
+	Print "alert('"+ erro +"');"
+	'Print "	history.back();"
+	Print "</script>"
+	
+End Sub
+Sub geracabecalho
+	Dim usuarioAtual As Variant	
+	Dim adms As Variant
+
+	On Error GoTo trataerro
+	Print|
+<script>
+
+function atualizaItem(campo){
+
+		valorCampo = document.getElementById(campo).value;
+
+		$.ajax({
+        	url: "| + docGer.GE_Servidor(0) + |/| + docGer.GE_BaseAtual(0) +|/(ag_atualizaItem)?Openagent",
+            method: "GET",
+            data: {campo: campo,valor: valorCampo,idDoc: "|+idDoc+|"},
+            success: function(result){
+		
+        	}
+        });
+}
+
+function isNumber(evt) {
+        var iKeyCode = (evt.which) ? evt.which : evt.keyCode
+        if (iKeyCode != 46 && iKeyCode > 31 && (iKeyCode < 48 || iKeyCode > 57))
+            return false;
+
+        return true;
+    }
+
+function alteraQuant(cod){
+	var campo1 = "CA_Quantidade"+cod
+	var campo2 = "CA_ValorUni"+cod
+	var campo3 = "CA_ValorTotal"+cod
+	var total = "CA_ValorTotal";
+	var totalPreco = 0;
+
+	valorQuant = document.getElementById(campo1).innerText;
+	valorProd = document.getElementById(campo2).value;
+	valorTotal = document.getElementById(campo3);
+	
+	valorTotal.value = Number(valorProd)*Number(valorQuant);
+	
+	
+
+    valorProd = document.getElementsByClassName("total");
+    			
+	for (i = 0; i < valorProd.length; i++) {
+						
+		totalPreco = totalPreco + parseInt( valorProd[i].value);
+						
+	}
+	
+	atualizaItem(campo3);
+}
+function alteraPercent(cod){
+	var campo1 = "CA_PercentEntregaUm"+cod
+	var campo2 = "CA_PercentEntregaDois"+cod;
+	var campo = document.getElementById(campo1);
+	var total = 0;
+
+	valor1 = document.getElementById(campo1).value;
+
+	if (valor1 > parseInt(100)){
+		
+		msgAlerta("Valor da porcentagem não pode ser superior a 100%", "goBack");
+
+	}else{
+
+		valor2 = document.getElementById(campo2);
+		total = parseInt(100)-parseInt(valor1);
+		valor2.value = total;
+		atualizaItem(campo1);
+		atualizaItem(campo2);
+	}
+	
+	
+}
+</script>
+
+		|
+
+	Exit Sub
+trataerro:
+	erro = "Ocorreu um erro no agente: CRIA LISTA DE PRODUTOS-SERVICOS AVULSOS/geracabecalho - " + Str(Err) + " " + Error + " na linha " +  Str(Erl) + " entre em contato com o administrador do sistema. " 
+	Print erro
+	Print "<script language='JavaScript'>"
+	Print "alert('"+ erro +"');"
+	'Print "	history.back();"
+	Print "</script>"
+End Sub

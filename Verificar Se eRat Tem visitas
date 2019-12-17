@@ -1,0 +1,120 @@
+'*********************************************	
+		
+		If (docColAprop Is Nothing) Then ' se apropriação de horas não existir...
+			Msgbox "Favor apropriar hora para o chamado.", 48, "ATENÇÃO"
+			
+			Exit Function
+		Else ' senão (existe apropriações)
+			
+	' VERIFICAR SE TEM APROPRIAÇÕES COM ERAT A PARTIR DA COLLECTION <Apropriacao> e CONTAR QUANTAS ERATS TEM
+		' ROTINA PARA VERIFICAR AS VISITAS AGENDADAS
+			Dim contERAT 				As Integer
+			Dim viVisita 					As NotesView
+			Dim colVisita 					As NotesDocumentCollection
+			Dim docVisita 				As notesdocument
+			Dim contVisita				As Integer
+			Dim keyVisita					As String
+			Dim keyAprop				As String
+			Dim listaVisita()				As Variant
+			Dim listaERAT()				As Variant
+			Dim listaMarcados()        As Variant
+			Dim indiceLista                 As Integer 
+			Dim contListaVisita           As Integer 
+			Set viVisita 					= DB.GetView("vi_VisitasChamado")
+			Set colVisita					= viVisita.GetAllDocumentsByKey(docAtual.CT_Numero(0))
+			Set docVisita					= colVisita.GetFirstDocument()
+			contVisita						= 0	
+			indiceLista						= 0 
+			contListaVisita 				= 0
+			contERAT 						= 0
+			
+' Cria lista de visitas com data e nome para fazer a comparação
+			While Not docVisita Is Nothing
+				keyVisita			= Left(Cstr(docVisita.VI_DtVisita(0)),10) & docVisita.VI_consultor(0) 
+				contVisita 			= contVisita + 1 ' contagem de visitas
+				Redim Preserve listaVisita(contVisita) 
+				listaVisita(contVisita) = keyVisita
+				Set docVisita		= colVisita.GetNextDocument(docVisita)
+			Wend
+			
+' Cria lista de ERATs com data e nome para fazer a comparação			
+			While Not docColAprop Is Nothing
+				
+				If docColAprop.AH_RadioSuporte(0) = "RAT" Then
+					
+					keyAprop		= (Left(Cstr(docColAprop.AH_Data(0)),10) & docColAprop.AH_Responsavel(0))
+					Redim Preserve listaERAT(contERAT)
+					listaERAT(contERAT) = keyAprop
+					contERAT = contERAT + 1 
+					
+				End If
+				Set docColAprop = Apropriacao.GetNextDocument(docColAprop)
+			Wend
+			
+%REM
+			Forall v In listaVisita
+				Msgbox v, 48, "ATENÇÃO"
+				If Arraygetindex(listaERAT, v, 0) >= 0 Then
+					Redim Preserve listaMarcados(indiceLista) 
+					listaMarcados(indiceLista) = v 
+					indiceLista = indiceLista + 1
+				End If
+			End Forall 
+	
+%END REM
+			
+			'loops para ver se todas as visitas foram marcadas
+			Forall varElementA In listaVisita
+				
+				Forall varElementB In listaERAT
+					
+					If varElementA = varElementB Then
+						
+						Erase varElementB 
+						indiceLista = indiceLista + 1
+						
+					End If
+					
+				End Forall
+				
+			End Forall
+			
+%REM
+
+'Contador da lista para saber quantas realmente foram marcadas
+			Forall k In listaMarcados
+				
+				contListaVisita = contListaVisita + 1
+				
+			End Forall
+
+%END REM
+			
+			'Compara para saber se esta tudo marcado
+			If (contERAT > indiceLista) Then
+				
+				Msgbox "Favor marcar as visitas faltantes.", 48, "ATENÇÃO"
+				Exit Function
+			Else
+				
+				Msgbox "Esta tudo certo com as visitas marcadas.", 48, "ATENÇÃO"
+				
+			End If
+			
+		End If
+		
+'********************final do código*******************************
+
+
+Dim dataAcordada As NotesDateTime
+Dim dataFechamento As NotesDateTime
+
+' Both values MUST be a STRING.
+Set dataFechamento = New NotesDateTime( "Today" )
+Set dataAcordada = New NotesDateTime( doc.FIELD(0) )
+
+If dataAcordada.DateOnly < dataFechamento.DateOnly Then
+ Msgbox "dataFechamento is greater than dataAcordada"
+Else
+ Msgbox "dataFechamento equals dataAcordada"
+End If

@@ -1,0 +1,38 @@
+Sub Initialize
+	
+	DIM ns as new NotesSession
+	DIM db as NotesDatabase
+	DIM nv as NotesView
+	DIM col as NotesDocumentCollection
+	DIM doc as NotesDocument
+
+
+	set db = ns.CurrentDatabase
+	set nv = db.GetView("vi_FuncPorNome")
+
+	If nv Is Nothing Then
+		MsgBox "A visão nao foi encontrada"
+		exit sub
+	End If
+
+	Set col = db.Unprocesseddocuments
+
+
+	If col.count = 0 Then
+		MsgBox "Nenhum documento selecionado"
+		exit sub
+	End If
+
+	set doc = col.getFirstDocument
+
+
+	Do While Not (Doc is Nothing)
+
+		doc.ca_Setor = "RH"
+		Call doc.Save(true, false)
+		set doc = col.getNextDocument(doc)
+
+	Loop
+
+End Sub
+

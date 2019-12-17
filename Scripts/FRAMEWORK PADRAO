@@ -1,0 +1,22 @@
+Sub msg(tipo As String, msg As String, js As String)
+	'js = javascript que será executado ao fechar a mensagem;
+	'tipos: sucesso; alerta; confirma
+
+	Call CabecalhoPagina()
+
+	If (tipo = "sucesso") Then
+		Print {
+		<script Type='text/javascript'>
+			msgSucesso("}& msg &{" , "}& js &{");
+		</script>
+	}
+
+	ElseIf (tipo = "alerta") Then
+		Print {
+		<script Type='text/javascript'>
+			msgAlerta("}& msg &{" , "}& js &{");
+		</script>
+	}
+	End If
+	
+End Sub

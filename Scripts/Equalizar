@@ -1,0 +1,414 @@
+%REM
+	Agent Equalizar
+	Created Oct 7, 2019 by Luan Loose
+	Description: Comments for Agent
+%END REM
+Option Public
+Option Declare
+Use "FRAMEWORK PADRAO"
+
+'objeto para armazenar os menores preços
+Class fornecMenorPreco
+	Public strNome As String
+	Public dblValor As Double
+	
+	Sub New (nome As String, valor As Double)
+		strNome = nome
+		dblValor = valor
+	End Sub
+	
+End Class
+Sub Initialize
+	
+	Dim ns 							As New NotesSession
+	Dim db 							As NotesDatabase 'base de compras
+	Dim doc 						As NotesDocument
+	Dim viGer 						As NotesView
+	Dim docGer						As NotesDocument
+	Dim colItensProdSelec 			As NotesDocumentCollection
+	Dim viItensProdSelec 			As NotesView
+	
+	Dim arrMenorPrecoProdutos() As fornecMenorPreco 'Fornecedores menor preco por produto
+	Dim arrMenorPrecoFrete(0) As fornecMenorPreco 'Fornecedores menor frete	
+	
+	Dim nvFornIndic As NotesView
+	Dim colFornIndic As NotesDocumentCollection
+	Dim docFornIndic As NotesDocument
+	
+	Dim docEqualiz As NotesDocument
+	
+	Dim dbEqualiz 				As NotesDatabase 'base de equalização
+	Dim nvNeg 					As NotesView
+	Dim docNeg 					As NotesDocument 'documento de negociação
+	Dim docProdSelec 			As NotesDocument ' documento de produto selecionado
+	'usado nos loops prod selecionados
+	Dim contNeg 				As Integer
+	Dim contProdSelec 			As Integer 
+	Dim contProdSelecStr 		As String
+	Dim caminho			 		As String
+	
+	Dim contProdVence 			As Integer 'usado nos loops para menores preços
+	
+	Dim ListaFornec() 			As String
+	Dim contFornec 				As Integer 'usado nos loops
+	Dim contFornecStr 			As String
+	
+	Dim contStr 					As String
+	
+	Dim valorUniProd 				As Variant
+	Dim valorTotalProd 				As Variant
+	Dim entregaUmProd 				As Variant
+	Dim entregaDoisProd 			As Variant
+	Dim percentEntregaUmProd 		As Variant
+	Dim percentEntregaDoisProd 		As Variant
+	
+	Dim ItemCodProduto 				As NotesItem
+	Dim ItemNomeProduto 			As NotesItem
+	Dim ItemQuantidade 				As NotesItem
+	Dim ItemUnidadeMedida 			As NotesItem
+	Dim ItemComplemento 			As NotesItem
+	Dim ItemValorUni 				As NotesItem
+	Dim ItemValorTotal	 			As NotesItem
+	Dim ItemEntregaUm 				As NotesItem
+	Dim ItemEntregaDois 			As NotesItem
+	Dim ItemPercentEntregaUm 		As NotesItem
+	Dim ItemPercentEntregaDois 		As NotesItem
+	Dim porcentProd					As NotesItem
+	
+	Dim mediaFreteTotal				As NotesItem
+	Dim savingTotal					As NotesItem
+	Dim porcentTotal				As NotesItem
+	Dim mediaSavingPorcentTotal		As NotesItem
+	
+	Dim MenorPrecoProd		 		As NotesItem
+	Dim FornecMenorPrecoProd		As NotesItem
+	
+	Dim FornecMenorPrecoFrete		As NotesItem
+	Dim MenorPrecoFrete		 		As NotesItem
+	
+	Dim MediaFreteCampo		 		As NotesItem
+	Dim MediaProduto		 		As NotesItem
+	
+	Dim SomaMenoresPrecos		 	As NotesItem
+	Dim soma						As Double
+	Dim somaPercent					As Double
+	Dim somaSaving					As Double
+
+	Dim valor 					As NotesItem
+	Dim pagamento 				As NotesItem
+	Dim frete 					As NotesItem
+	Dim parcelas 				As NotesItem
+	Dim proposta 				As NotesItem
+	Dim nomeFornec				As Notesitem
+	Dim saving					As NotesItem
+	Dim porcentagem				As NotesItem
+	
+	Dim quantFornec 			As NotesItem
+	Dim quantProd 				As NotesItem
+	Dim savingProdCampo			As NotesItem
+	Dim totalValorProd			As Variant
+	Dim mediaValorProd			As Variant
+	Dim valorSavingTotal		As Variant
+	Dim valorPorcentTotal		As Variant
+
+	Dim lang 					As String
+	Dim mensagem 				As string
+
+	
+	Dim i 						As Integer ' usado em loops
+	Dim j 						As Integer ' usado como contador do array
+	
+	'variaveis para fazer media, saving etc
+	
+	Dim somaFrete 				As Double
+	Dim mediaProd				As double
+	Dim mediaFrete				As Double	
+	Dim calculoSavingFrete 		As Double
+	Dim somaProd				As Double
+	Dim savingProd				As Double
+	
+	Dim porcentagemProd 		As Currency
+	Dim calculoPorcentagemFrete As Currency
+			
+
+	Set db 						= ns.CurrentDatabase
+	Set doc						= ns.Documentcontext
+	Set viGer 					= db.Getview("vi_Caminhos")
+	Set docGer 					= viGer.Getfirstdocument()
+	
+	Set nvFornIndic				= db.GetView("vi_FornecedoresIndicados")
+	Set colFornIndic 			= nvFornIndic.Getalldocumentsbykey(doc.CA_ID(0))
+	
+	Set viItensProdSelec		= db.getview("vi_ItensSelecionados")
+	Set colItensProdSelec 		= viItensProdSelec.getalldocumentsbykey(doc.CA_ID(0)) 
+	
+	Set dbEqualiz				= ns.Getdatabase(db.server, docGer.GE_BaseEqualiz(0), False)
+	
+	caminho = docGer.CA_Servidor(0) + "/" + docGer.BaseAtual(0) + "/vi_Todos/"+doc.CA_ID(0)+"?openDocument"
+	
+	'Monta array com a Lista de fornecedores indicados
+	contFornec = 0
+	If colFornIndic.count > 0 Then
+		Set docFornIndic = colFornIndic.Getfirstdocument()
+		Do While Not docFornIndic Is Nothing
+			ReDim Preserve ListaFornec(contFornec)
+			ListaFornec(contFornec) = docFornIndic.CA_Fornecedor(0)
+			contFornec = contFornec + 1			
+			
+			Set docFornIndic = colFornIndic.GetNextDocument(docFornIndic)
+		Loop
+		
+	End If
+	
+	
+	'Criar doc de Equalizacao
+	Set docEqualiz = dbEqualiz.CreateDocument
+	docEqualiz.Form = "fo_Equalizacao"
+	docEqualiz.CA_ID = docEqualiz.UniversalID
+	
+	debug "Criou o doc de equaliz"
+	' Cria os campos com informações em comum sobre os produtos
+	Set docProdSelec = colItensProdSelec.Getfirstdocument()
+	contProdSelec = 0
+	
+	Do While not docProdSelec Is Nothing
+		contProdSelec = contProdSelec + 1
+		contProdSelecStr = cStr(contProdSelec)
+		
+		Set ItemCodProduto		= docEqualiz.ReplaceItemValue	( "CA_CodProduto" & contProdSelecStr, docProdSelec.CA_CodProduto(0))
+		Set ItemNomeProduto		= docEqualiz.ReplaceItemValue	( "CA_NomeProduto" & contProdSelecStr, docProdSelec.CA_NomeProduto(0))
+		Set ItemQuantidade		= docEqualiz.ReplaceItemValue	( "CA_Quantidade" & contProdSelecStr, docProdSelec.CA_Quantidade(0))
+		Set ItemUnidadeMedida	= docEqualiz.ReplaceItemValue	( "CA_UnidadeMedida" & contProdSelecStr, docProdSelec.CA_UnidadeMedida(0))
+		Set ItemComplemento		= docEqualiz.ReplaceItemValue	( "CA_Complemento" & contProdSelecStr, docProdSelec.CA_Complemento(0))
+		
+		Set docProdSelec = colItensProdSelec.GetNextDocument(docProdSelec)
+	Loop
+
+
+	'Preencher o array com objetos vazios usando mesmo loop pois sempre tem o mesmo tamanho
+
+	Set arrMenorPrecoFrete(0) = New fornecMenorPreco("", CDbl(9999.00))'frete
+
+	
+	'Faz o redim do array de fornecedores menor preco para a quantidade de produtos indicados
+	ReDim arrMenorPrecoProdutos(contProdSelec)
+	
+	'Preencher o array com objetos vazios
+	For i = 0 To contProdSelec-1
+		Set arrMenorPrecoProdutos(i) = New fornecMenorPreco("", CDbl(9999.00))'produtos
+	Next
+		
+	'Acessar view de Negociacoes de qualquer rodada referente ao IDDoc da requisitação
+	'Apenas para preencher os campos abaixo para linka-los
+	
+	Set dbEqualiz	= ns.Getdatabase(db.server, docGer.GE_BaseEqualiz(0), False)
+	Set nvNeg 		= dbEqualiz.GetView("vi_NegPorReqPropEnv")
+	
+	Set docNeg = nvNeg.getdocumentbykey(doc.CA_ID(0))
+		
+		
+	'setar esses campos para linkar o pedido a equalização
+	docEqualiz.CA_NumeroPedido = docNeg.CA_NumeroPedido(0)
+	docEqualiz.CA_IdPedido = docNeg.CA_IdPedido(0)
+	
+	Set quantFornec		= docEqualiz.ReplaceItemValue	( "CA_QuantFornecedores", contFornec)
+	Set quantProd		= docEqualiz.ReplaceItemValue	( "CA_QuantProdutos", contProdSelec)
+	
+	somaFrete 		= 0
+	mediaFrete		= 0
+	contFornec 		= 0
+	somaProd		= 0
+	
+	'muda o valor de NvNeg pois mudaremos a visão que será usada
+	
+	Set nvNeg 		= dbEqualiz.GetView("vi_NegociacaoPorIdDocFornec")
+	ForAll elem In ListaFornec
+		contFornec = contFornec + 1
+		contFornecStr = CStr(contFornec)
+		'Acessar view de Negociacoes (Rodadas) e pegar a ultima rodada de cada fornecedor (doc mais recente)
+		Set docNeg = nvNeg.GetDocumentByKey(doc.CA_ID(0) & " - " & elem)
+		
+		
+		Set nomeFornec = docEqualiz.ReplaceItemValue( "CA_NomeFornec" & contFornecStr, docNeg.CA_nomeFornec(0))
+		Set valor = docEqualiz.ReplaceItemValue( "CA_ValorTotalProdF" & contFornecStr, docNeg.CA_ValorTotal(0))
+		Set pagamento = docEqualiz.ReplaceItemValue( "CA_PrazoPagamentoF" & contFornecStr, docNeg.CA_PrazoPagamento(0))
+		Set frete = docEqualiz.ReplaceItemValue( "CA_FreteF" & contFornecStr, docNeg.CA_ValorFrete(0))
+		'Set parcelas = docEqualiz.ReplaceItemValue	( "CA_ParcelasF" & contFornecStr, docNeg.CA_NumParcelas(0))
+		Set proposta = docEqualiz.ReplaceItemValue( "CA_PropostaF" & contFornecStr, docNeg.CA_ValidadeProposta(0))
+
+		somaFrete = somaFrete + docNeg.CA_ValorFrete(0)
+		
+		'verifica menor frete para cada fornecedor
+		If (CDbl(docNeg.CA_ValorFrete(0)) < arrMenorPrecoFrete(0).dblValor) Then
+			Set arrMenorPrecoFrete(0) = New fornecMenorPreco(docNeg.CA_nomeFornec(0), CDbl(docNeg.CA_ValorFrete(0)))
+		End If
+		
+		If Not docNeg Is Nothing Then
+			'Processar Campos da negociação para equalizar
+				
+			contNeg = contNeg + 1
+			j = 0
+			For i = 1 To colItensProdSelec.Count
+				contStr = CStr(i)
+				
+				valorUniProd				= docNeg.GetItemValue( "CA_ValorUni"+contStr )
+				valorTotalProd				= docNeg.GetItemValue( "CA_ValorTotal"+contStr )
+				entregaUmProd				= docNeg.GetItemValue( "CA_EntregaUm"+contStr )
+				entregaDoisProd				= docNeg.GetItemValue( "CA_EntregaDois"+contStr )
+				percentEntregaUmProd		= docNeg.GetItemValue( "CA_PercentEntregaUm"+contStr )
+				percentEntregaDoisProd		= docNeg.GetItemValue( "CA_PercentEntregaDois"+contStr )
+				
+				'Preenche campos de Preço dos Produtos para cada Fornecedor: Ex:CA_CodProdutoF1_1	-> F1 eh fornecedor1 e 1 eh contProduto	
+				
+				Set ItemValorUni 			= docEqualiz.ReplaceItemValue	( "CA_ValorUniF" & contFornecStr & "_" & contStr , valorUniProd)
+				Set ItemValorTotal	 		= docEqualiz.ReplaceItemValue	( "CA_ValorTotalF" & contFornecStr & "_" & contStr , valorTotalProd)
+				Set ItemEntregaUm 			= docEqualiz.ReplaceItemValue	( "CA_EntregaUmF" & contFornecStr & "_" & contStr , entregaUmProd)
+				Set ItemEntregaDois 		= docEqualiz.ReplaceItemValue	( "CA_EntregaDoisF" & contFornecStr & "_" & contStr , entregaDoisProd)
+				Set ItemPercentEntregaUm	= docEqualiz.ReplaceItemValue	( "CA_PercentEntregaUmF" & contFornecStr & "_" & contStr , percentEntregaUmProd)
+				Set ItemPercentEntregaDois	= docEqualiz.ReplaceItemValue	( "CA_PercentEntregaDoisF" & contFornecStr & "_" & contStr , percentEntregaDoisProd)
+				
+				'verifica menor preço para cada produto
+				
+				If (CDbl(valorTotalProd(0)) < arrMenorPrecoProdutos(j).dblValor) Then
+				
+					Set arrMenorPrecoProdutos(j) = New fornecMenorPreco(docNeg.CA_nomeFornec(0), CDbl(valorTotalProd(0)))
+				
+				End If	
+			
+				j = j + 1
+			Next
+			
+		End If
+	End ForAll
+	
+	
+	
+	For i = 1 To colItensProdSelec.Count
+		contStr = CStr(i)
+		
+		For j = 1 To contFornec
+			contFornecStr = CStr(j)
+			
+			totalValorProd = docEqualiz.GetItemValue( "CA_ValorTotalF" & contFornecStr & "_" & contStr)
+			
+			somaProd = somaProd + CDbl(totalValorProd(0))
+		
+		Next
+		
+		Set MediaProduto = docEqualiz.ReplaceItemValue	( "CA_MediaProd"& i , somaProd)
+		
+		somaProd = 0
+	Next
+	
+
+	soma = 0
+	j = 1
+	'Após saber quem tem o menor preço por produto, preço total e frete seta nos campos
+	For i = 0 To colItensProdSelec.Count-1	
+		
+		Set MenorPrecoProd 				= docEqualiz.ReplaceItemValue	( "CA_MenorPrecoProd" & j, arrMenorPrecoProdutos(i).dblValor)	
+		
+		Set FornecMenorPrecoProd 		= docEqualiz.ReplaceItemValue	( "CA_FornecMenorPrecoProd" & j, arrMenorPrecoProdutos(i).strNome)	
+			
+		soma = soma + arrMenorPrecoProdutos(i).dblValor ' sera o campo soma menores valores produtos
+		
+		mediaValorProd 					= docEqualiz.GetItemValue( "CA_MediaProd" & j)
+		
+		mediaProd = (CDbl(mediaValorProd(0)) - arrMenorPrecoProdutos(i).dblValor)/(contFornec-1)
+			
+		Set MediaProduto 				= docEqualiz.ReplaceItemValue	( "CA_MediaProd"& j, mediaProd)
+			
+		savingProd = mediaProd - arrMenorPrecoProdutos(i).dblValor
+			
+		Set savingProdCampo 			= docEqualiz.ReplaceItemValue	( "CA_SavingProd"& j, savingProd)
+		
+		porcentagemProd = (savingProd / mediaProd)*100
+		
+		Set porcentProd 				= docEqualiz.ReplaceItemValue	( "CA_PorcentagemProd"& j, porcentagemProd)
+			
+		j = j + 1
+			
+		mediaProd = 0
+	Next
+	
+	
+	Set MenorPrecoFrete 		= docEqualiz.ReplaceItemValue	( "CA_MenorPrecoFrete", arrMenorPrecoFrete(0).dblValor)
+	Set FornecMenorPrecoFrete 		= docEqualiz.ReplaceItemValue	( "CA_FornecMenorPrecoFrete", arrMenorPrecoFrete(0).strNome)
+	
+	soma = soma + arrMenorPrecoFrete(0).dblValor
+	
+	'este campo é a soma de todos menores valores (produtos, frete)
+	Set SomaMenoresPrecos 		= docEqualiz.ReplaceItemValue	( "CA_SomaMenoresPrecos", soma)
+	
+	mediaFrete = (somaFrete - arrMenorPrecoFrete(0).dblValor)/(contFornec-1)
+		
+	Set MediaFreteCampo 		= docEqualiz.ReplaceItemValue	( "CA_MediaFrete", mediaFrete)
+	
+	calculoSavingFrete = mediaFrete - arrMenorPrecoFrete(0).dblValor
+	
+	Set saving 		= docEqualiz.ReplaceItemValue	( "CA_SavingFrete", calculoSavingFrete)
+	
+	calculoPorcentagemFrete = (calculoSavingFrete / mediaFrete)*100
+	
+	Set porcentagem 		= docEqualiz.ReplaceItemValue	( "CA_PorcentagemFrete", calculoPorcentagemFrete)
+	
+	
+	mediaProd = 0
+	somaPercent = 0
+	somaSaving = 0
+	
+	' faz todos os calculos medias, saving, melhores preços
+	For i = 1 To colItensProdSelec.Count
+		
+		mediaValorProd				= docEqualiz.GetItemValue( "CA_MediaProd" & i)
+		valorSavingTotal					= docEqualiz.GetItemValue( "CA_SavingProd" & i)	
+		valorPorcentTotal				= docEqualiz.GetItemValue( "CA_PorcentagemProd" & i)
+		
+		somaPercent = somaPercent + CDbl(valorPorcentTotal(0))
+		somaSaving = somaSaving + CDbl(valorSavingTotal(0))
+		mediaProd = mediaProd + CDbl(mediaValorProd(0))
+	
+	Next
+	
+	mediaProd = mediaProd + mediaFrete
+	somaPercent = somaPercent + calculoPorcentagemFrete
+	somaSaving	= somaSaving + calculoSavingFrete
+	
+	Set mediaFreteTotal = docEqualiz.ReplaceItemValue( "CA_MediaFreteTotal", mediaProd)
+	Set savingTotal	= docEqualiz.ReplaceItemValue( "CA_SavingTotal", somaSaving)
+	Set porcentTotal	= docEqualiz.ReplaceItemValue( "CA_MediaPercentTotal", somaPercent)
+	
+	Set mediaSavingPorcentTotal	= docEqualiz.ReplaceItemValue( "CA_SavingMediaPercentTotal", somaPercent)
+	Set savingTotal	= docEqualiz.ReplaceItemValue( "CA_SomaSavingTotal", somaSaving)
+	
+	
+	lang = Mid(doc.HTTP_Cookie(0), InStr(doc.HTTP_Cookie(0),"IDIOMACompras=")+ 14, 2)
+	If lang = "EN" Then
+		mensagem = "Negotiation rounds were not found"
+	ElseIf lang = "ES" Then
+		Mensagem = "No se encontraron rondas de negociación del pedido actual"
+	Else
+		Mensagem = "As rodadas de Negociação do pedido corrente não foram encontradas"
+	End If
+	
+	If contNeg > 0 Then
+		
+		Call docEqualiz.Save (True, False)
+	Else
+		MsgBox Mensagem
+		Exit Sub
+	End If
+	If lang = "EN" Then
+		Mensagem = "Equalization completed successfully. Please access the equalization module!"
+	ElseIf lang = "ES" Then
+		Mensagem = "Ecualización completada con éxito. ¡Acceda al módulo de ecualización!"
+	Else
+		Mensagem = "Equalização concluída com sucesso. Favor acessar o Módulo de equalização!"
+	End If
+	
+	Call msg("sucesso", Mensagem, "self.location='"& caminho &"'")
+	
+End Sub
+
+
+

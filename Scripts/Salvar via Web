@@ -1,0 +1,49 @@
+var form = window.document.forms[0]
+
+var total = "CA_ValorTotal";
+var campoTotal = $("#CA_Total").text();
+var valorTotal = 0;
+var valorFrete = 0;
+var idDocumento = $("#CA_ID").text(); 
+var pagamento = 0;
+var proposta = 0;
+
+
+if ($("#Frete").val() == undefined){
+ 	valorFrete = $("#CA_Frete").text();
+}else{
+	valorFrete = $("#Frete").val();
+}
+
+if ($("#Pagamento").val() == undefined){
+ 	pagamento = $("#CA_PrazoPagamento").text();
+}else{
+	pagamento = $("#Pagamento").val();
+}
+
+if ($("#Proposta").val() == undefined){
+ 	proposta = $("#CA_ValidadeProposta").text();
+}else{
+	proposta = $("#Proposta").val();
+}
+
+console.log("Frete "+valorFrete);
+console.log("ID "+idDocumento);
+console.log("total "+campoTotal);
+
+
+valorProd = document.getElementsByClassName("total");
+
+	for (i = 0; i < valorProd.length; i++) {
+						
+		valorTotal =valorTotal +parseInt( valorProd[i].value);
+						
+			}
+				
+	valorTotal =valorTotal +parseInt(valorFrete);
+				
+	var pathname = window.location.pathname;
+	var path = pathname.substring(0,(pathname.lastIndexOf('.nsf')+5));
+	var winFeature = "Width=650px; Height=450px; top=100, left=350; help=no; status=no; directories  =0; scroll=yes; resizable=yes";
+	var url =location.protocol + "//" +  window.location.host + "/" + path + "/(ag_SalvarNegociacao)?OpenAgent&total=" + valorTotal+"&idDoc=" + idDocumento + "&frete=" + valorFrete+ "&pagamento=" + pagamento+ "&proposta=" + proposta;
+	window.location.href = url;

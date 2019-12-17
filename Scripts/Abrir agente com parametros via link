@@ -1,0 +1,1 @@
+"/" + @WebDbName + "/(ag_Recusar)?OpenAgent&iddoc=" + @Text(@DocumentUniqueID) + "&codFornec=" + @Text(CA_codFornec) +"&codReq=" + @Text(CA_NumeroPedido)

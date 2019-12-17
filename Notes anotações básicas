@@ -1,0 +1,25 @@
+Notes
+
+1) Tipos de arquivo
+
+ - .nsf : Notes Standard File
+ 	Onde ficarão todos os códigos, pages, outlines etc.
+ 
+ - .ntf: Arquivos de template que podem ser usados como modelo para criação de formulários, apenas estrutura.
+
+
+ 2) Estrutura Notes
+
+ 	Cada arquivo notes possui um nome para identificação (teste.nsf) e um alias (usado nos códigos).
+ 	O nome do arquivo por diversos motivos pode sofrer alterações, já o alias nunca deve ser mudado por ser usado em diversas partes do nosso código.
+
+ 	Um arquivo notes pode ser um formulário ou view, a partir de um form sao gerados documentos e estes podem ser mostrados e organizados em uma view.
+
+ 	Podemos criar uma interface para organizar os elementos, para isso é usado a pagina, nela podemos adicionar botoes, campos, outlines etc.
+
+ 	Uma outline é um menu que vc pode criar uma navegação e linkar a um form ou view.
+
+ 	Temos também o frameset, que é a cara que damos para a nossa base de dados, ela é dividida de algumas formas, para montar o layout é preciso de uma página ou várias páginas, depende da configuração que vc escolheu.
+
+ 	Esquema:
+ 	Frameset(pagina(outline->pag1,pag2,pag3),pagina(pag1,pag2,pag3))

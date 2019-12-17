@@ -1,0 +1,162 @@
+listaErat
+listaVisita
+
+
+
+
+set docErat = listaErat.getFirstDocument
+set docVisita = listaVisita.getFirstDocument
+
+contadorErat = 0
+contadorVisita = 0
+
+			While Not docColAprop Is Nothing
+				If docColAprop.AH_RadioSuporte(0) = "RAT" Then
+					contERAT = contERAT + 1 ' contagem de erats
+				End If
+				Set docColAprop = Apropriacao.GetNextDocument(docColAprop)
+			Wend
+			
+			 'final if para testar se tem erat ou nao
+			If (contERAT > 0) Then
+				
+				Do While Not (docColAprop Is Nothing)
+					
+					Do While Not (docVisita Is Nothing)
+						
+					'gambiarra
+					if (Left(Cstr(docVisita.VI_DtVisita(0)),10) = Left(Cstr(docVisita.VI_DtVisita(0)),10) And (docVisita.VI_consultor(0) = docVisita.VI_consultor(0)) Then
+						
+						Set docVisitaAux = listaVisita.getNextDocument(docVisita)
+						Call docVisita.DeleteDocument( docVisita )
+						Set docVisita = docVisitaAux
+						
+					Else 
+						
+						Set docVisita = listaVisita.getNextDocument(docVisita)
+						
+					Loop
+					
+					Set docEratAux = listaErat.getNextDocument(docColAprop)
+					Call docColAprop.DeleteDocument(docColAprop)
+					Set docColAprop = docEratAux
+					contadorVisita = contadorVisita + 1
+					
+				Loop
+				
+			End If 'final if para testar se tem erat ou nao
+
+
+
+
+
+
+
+Function commonElements(array1 As Variant, array2 As Variant) As Variant
+    Dim newArray() As Variant 
+    Dim i As Integer 
+    i=0 
+    ForAll v In array1
+        If ArrayGetIndex(array2, v, 0) >= 0 Then
+            ReDim Preserve newArray(i) 
+            newArray(i) = v 
+            i = i + 1
+        End If
+    End ForAll 
+    commonElements = newArray 
+End Function
+
+
+
+'*********************************************	
+		If (docColAprop Is Nothing) Then ' se apropriação de horas não existir...
+			Msgbox "Favor apropriar hora para o chamado.", 48, "ATENÇÃO"
+			Exit Function
+		Else ' senão (existe apropriações)
+			' VERIFICAR SE TEM APROPRIAÇÕES COM ERAT A PARTIR DA COLLECTION <Apropriacao> e CONTAR QUANTAS ERATS TEM		
+			Dim contERAT 		As Integer
+			contERAT 				= 0
+	'*********************************************
+	' ROTINA PARA VERIFICAR AS VISITAS AGENDADAS
+			Dim viVisita 					As NotesView
+			Dim colVisita 					As NotesDocumentCollection
+			Dim docVisita 				As notesdocument
+			Dim contVisita				As Integer
+			Dim keyVisita			As String
+			Dim keyAprop				As String
+			Dim listaVisita()				As String
+			Dim listaERAT()				As String
+			Dim indiceLista                 As Integer 
+			Dim contListaVisita                 As Integer 
+			Set viVisita 					= DB.GetView("vi_VisitasChamado")
+			Set colVisita			= viVisita.GetAllDocumentsByKey(docAtual.NumeroChamado(0))
+			Set docVisita			= colVisita.GetFirstDocument()
+			contVisita				= 0	
+			indiceLista                        = 0 
+			contListaVisita = 0
+			
+	'*********************************************************************************************		
+			While Not docVisita Is Nothing
+				keyVisita			= Left(Cstr(docVisita.VI_DtVisita(0)),10) & docVisita.VI_consultor(0) '02/07/2019Ana Paula Travassos Polycarpo
+				contVisita 			= contVisita + 1 ' contagem de visitas
+				Redim listaVisita(contVisita) As String
+				listaVisita(contVisita) = keyVisita
+				Set docVisita		= colVisita.GetNextDocument(docVisita)
+			Wend
+			
+			While Not docColAprop Is Nothing
+				If docColAprop.AH_RadioSuporte(0) = "RAT" Then
+					
+					' montar a chave da ERAT com data e nome para fazer a comparação
+					keyAprop		= (Left(Cstr(docColAprop.AH_Data(0)),10) & docColAprop.AH_Responsavel(0)) '02/07/2019Ana Paula Travassos Polycarpo
+					Redim  listaERAT(contERAT) As String
+					listaERAT(contERAT) = keyAprop
+					contERAT = contERAT + 1 ' contagem de erats
+					
+				End If
+				Set docColAprop = Apropriacao.GetNextDocument(docColAprop)
+			Wend
+			
+		'***************Teste******************************
+			
+			Dim listaMarcados() As Variant 
+			
+			Forall v In listaVisita
+				If Arraygetindex(listaERAT, v, 0) >= 0 Then
+					Redim Preserve listaMarcados(indiceLista) 
+					listaMarcados(indiceLista) = v 
+					indiceLista = indiceLista + 1
+				End If
+			End Forall 
+			
+			Forall k In listaMarcados
+				
+				contListaVisita = contListaVisita + 1
+				
+			End Forall
+			
+			If (contERAT > contListaVisita) Then
+				
+				Msgbox "Tomara que tenha dado certo.", 48, "ATENÇÃO"
+				Exit Function
+				
+			End If
+		End If
+		'**************Fim teste*******************************	
+	'*********************************************
+
+
+
+	Colection estava vazia pois estava pegando o campo errado
+
+	precisa de apropriações pq nao esta criando a colection
+
+
+
+	---------------------------
+
+---------------------------
+Form = "Horas" & NumeroChamado = "0559/19"
+---------------------------
+OK   
+---------------------------
